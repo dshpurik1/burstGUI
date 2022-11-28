@@ -1,0 +1,105 @@
+{
+    "name": "patient",
+    "undefinedAttributesAction": "ERROR",
+    "attributes": [
+        {
+            "name": "name",
+            "datatype": "STRING",
+            "required": true
+        },
+        {
+            "name": "ssn",
+            "datatype": "STRING",
+            "required": true
+        },
+        {
+            "name": "phone",
+            "datatype": "STRING",
+            "required": true
+        },
+        {
+            "name": "dob",
+            "datatype": "DATE",
+            "required": true
+        },
+        {
+            "name": "phone_type",
+            "datatype": "ENUM",
+            "required": true,
+            "enumValues": [
+                "Home",
+                "Mobile",
+                "Work"
+            ]
+        },
+        {
+            "name": "mrn",
+            "datatype": "STRING",
+            "required": true
+        },
+        {
+            "name" : "address",
+            "datatype": "NODE",
+            "nodeAttributes": [
+                {
+                    "name": "street",
+                    "required": true
+                },
+                {
+                    "name": "street2",
+                    "required": false
+                },
+                {
+                    "name": "city",
+                    "required": true
+                },
+                {
+                    "name": "state",
+                    "required": true
+                },
+                {
+                    "name": "zipcode",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "insurance",
+            "datatype": "NODE",
+            "nodeAttributes": [
+                {
+                    "name": "insurance_company",
+                    "required": true
+                },
+                {
+                    "name": "policy_number",
+                    "required": true
+                },
+                {
+                    "name": "expiration_date",
+                    "datatype": "DATE"
+                }
+            ]
+        }
+    ],
+    "indexes": [
+        {
+            "attributes": [
+                "mrn"
+            ],
+            "type": "PRIMARY"
+        },
+        {
+            "attributes": [
+                "ssn"
+            ],
+            "type": "UNIQUE"
+        },
+        {
+            "attributes": [
+                "name"
+            ],
+            "type": "NORMAL"
+        }
+    ]
+}

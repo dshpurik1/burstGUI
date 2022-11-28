@@ -1,0 +1,1017 @@
+import time
+import requests
+import json
+from tkinter import filedialog
+import os
+import magic
+from tkinter import messagebox
+import tkinter as tk
+from PIL import Image, ImageTk
+import tkinter.scrolledtext as scrolledtext
+
+
+pink = '#E11584'
+background = '#47525A'
+text_color = '#CFD5D6'
+secondary = '#53AAA9'
+font = ('RedHatText', 17)
+
+class UserData:
+
+    headers = {
+        'BIQ_CUSTOMER_NAME': 'mines',
+        'BIQ_SDZ_NAME': 'dev',
+    }
+
+    def __init__(self, access_token, uuid):
+        self.access_token = access_token
+        self.uuid = uuid
+        self.headers["Authorization"] = 'Bearer ' + self.access_token
+
+    def get_headers(self, headers):
+        return {**self.headers, **headers}
+
+
+def error_handle(response):
+    if response.status_code == 200:
+        print("Successful operation!")
+        return 200
+    else:
+        reason = json.loads(response.text)["message"]
+        print(f"Error: {response.status_code}\n{reason}")
+        return response.status_code
+
+
+def get_access_token(username, password):
+    url = "https://keycloak.app.burstiq.com/auth/realms/burstiq/protocol/openid-connect/token"
+    payload='client_id=jgodzilla-public&grant_type=password&username=' + username + '&password=' + password
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    if error_handle(response) != 200:
+        loading_splash_screen.destroy()
+        tk.messagebox.showerror(
+            title="Invalid Login!", message="Check your login credentials!")
+        return landing_page()
+
+    return json.loads(response.text)['access_token']
+
+
+def get_uuid(access_token, username):
+    url = "https://dev.godzilla.burstiq.com/api/metadata/wallet/lookup?email=" + username
+    payload = ""
+    headers = {
+        'BIQ_CUSTOMER_NAME': 'mines',
+        'BIQ_SDZ_NAME': 'dev',
+        'Authorization' : 'Bearer ' + access_token,
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    if error_handle(response) != 200:
+        tk.messagebox.showerror(
+            title="Invalid Login!", message="Check your login credentials!")
+        loading_splash_screen.destroy()
+        return landing_page()
+
+    return json.loads(response.text)['userID']
+
+
+def login_button():
+    username = "dshpurik@mines.edu" #username_entry.get()
+    password = "BigFigEnergy24$$" #password_entry.get()
+
+    if not username:
+        tk.messagebox.showerror(
+            title="Invalid Fields!", message="Please enter Username.")
+        return
+    if not password:
+        tk.messagebox.showerror(
+            title="Invalid Fields!", message="Please enter Password.")
+        return
+
+    return login(username, password)
+
+
+def landing_page():
+    global landing_page_gui
+    landing_page_gui = tk.Tk()
+
+    width_of_window = 862
+    height_of_window = 519
+
+    screen_width = landing_page_gui.winfo_screenwidth()
+    screen_height = landing_page_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    landing_page_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                              x_coordinate, y_coordinate))
+    landing_page_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        landing_page_gui, bg=background, height=519, width=862,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(431, 0, 431 + 431, 0 + 519, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=100)
+
+    text_box_bg = Image.open('entry_box_norm.png')
+    text_box_bg = ImageTk.PhotoImage(text_box_bg)
+    canvas.create_image(650.5, 200, image=text_box_bg)
+    canvas.create_image(650.5, 300, image=text_box_bg)
+
+    global username_entry
+    username_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    username_entry.place(x=490.0, y=190, width=321.0, height=35)
+
+    global password_entry
+    password_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background, highlightthickness=0, show='*')
+    password_entry.place(x=490.0, y=290, width=321.0, height=35)
+
+    canvas.create_text(
+        490, 183, text="Username", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        490.0, 283, text="Password", fill=background,
+        font=('RedHatText', 13), anchor="w")
+
+    generate_btn_img = Image.open('login.png')
+    generate_btn_img = ImageTk.PhotoImage(generate_btn_img)
+    generate_btn = tk.Button(
+        image=generate_btn_img, borderwidth=0, highlightthickness=0,
+        command=login_button, relief="flat")
+    generate_btn.place(x=557, y=401, width=180, height=55)
+
+    landing_page_gui.mainloop()
+
+
+def login(username, password):
+    landing_page_gui.destroy()
+
+    global loading_splash_screen
+    loading_splash_screen = tk.Tk()
+
+    width_of_window = 427
+    height_of_window = 250
+
+    screen_width = loading_splash_screen.winfo_screenwidth()
+    screen_height = loading_splash_screen.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+    loading_splash_screen.geometry("%dx%d+%d+%d" % (width_of_window, height_of_window, 
+                                     x_coordinate, y_coordinate))
+    loading_splash_screen.overrideredirect(1)
+    loading_splash_screen.configure(bg=background)
+
+    tk.Frame(loading_splash_screen, width=427, height=250, bg=background, border=10, highlightbackground=secondary, 
+             highlightcolor=secondary, highlightthickness=2).place(x=0,y=0)
+    tk.Label(loading_splash_screen, text='LOADING', fg=text_color, bg=background, font=('RedHatText', 25, "bold")).place(x=138,y=90)
+    image_a=ImageTk.PhotoImage(Image.open('c2.png'))
+    image_b=ImageTk.PhotoImage(Image.open('c1.png'))
+
+    tk.Label(image=image_a, border=0).place(x=180, y=145)
+    tk.Label(image=image_b, border=0).place(x=200, y=145)
+    tk.Label(image=image_b, border=0).place(x=220, y=145)
+    tk.Label(image=image_b, border=0).place(x=240, y=145)
+    loading_splash_screen.update_idletasks()
+    time.sleep(0.15)
+
+    tk.Label(image=image_b, border=0).place(x=180, y=145)
+    tk.Label(image=image_a, border=0).place(x=200, y=145)
+    tk.Label(image=image_b, border=0).place(x=220, y=145)
+    tk.Label(image=image_b, border=0).place(x=240, y=145)
+    loading_splash_screen.update_idletasks()
+    access_token = get_access_token(username, password)
+
+    tk.Label(image=image_b, border=0).place(x=180, y=145)
+    tk.Label(image=image_b, border=0).place(x=200, y=145)
+    tk.Label(image=image_a, border=0).place(x=220, y=145)
+    tk.Label(image=image_b, border=0).place(x=240, y=145)
+    loading_splash_screen.update_idletasks()
+    uuid = get_uuid(access_token, username)
+
+    tk.Label(image=image_b, border=0).place(x=180, y=145)
+    tk.Label(image=image_b, border=0).place(x=200, y=145)
+    tk.Label(image=image_b, border=0).place(x=220, y=145)
+    tk.Label(image=image_a, border=0).place(x=240, y=145)
+    loading_splash_screen.update_idletasks()
+    time.sleep(0.2)
+
+    loading_splash_screen.destroy()
+    user_data = UserData(access_token, uuid)
+    main_menu(user_data, None)
+
+
+def main_menu(user_data, prev_screen):
+    if prev_screen:
+        prev_screen.destroy()
+
+    main_menu_gui = tk.Tk()
+
+    width_of_window = 862
+    height_of_window = 519
+
+    screen_width = main_menu_gui.winfo_screenwidth()
+    screen_height = main_menu_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    main_menu_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                              x_coordinate, y_coordinate))
+    main_menu_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        main_menu_gui, bg=background, height=519, width=862,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(431, 0, 431 + 431, 0 + 519, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=100)
+
+    upload_btn_img = Image.open('upload.png')
+    upload_btn_img = ImageTk.PhotoImage(upload_btn_img)
+    tk.Button(
+        image=upload_btn_img, borderwidth=0, highlightthickness=0,
+        command=lambda : upload(user_data, main_menu_gui), relief="flat").place(x=557, y=150)
+
+    view_btn_img = Image.open('view.png')
+    view_btn_img = ImageTk.PhotoImage(view_btn_img)
+    tk.Button(
+        image=view_btn_img, borderwidth=0, highlightthickness=0,
+        command=lambda : view(user_data, main_menu_gui), relief="flat").place(x=557, y=225)
+
+    share_btn_img = Image.open('share.png')
+    share_btn_img = ImageTk.PhotoImage(share_btn_img)
+    tk.Button(
+        image=share_btn_img, borderwidth=0, highlightthickness=0,
+        command=lambda : share(user_data, main_menu_gui), relief="flat").place(x=557, y=300)
+
+    logout_btn_img = Image.open('logout.png')
+    logout_btn_img = ImageTk.PhotoImage(logout_btn_img)
+    tk.Button(
+        image=logout_btn_img, borderwidth=0, highlightthickness=0,
+        command=lambda : logout(main_menu_gui), relief="flat").place(x=805, y=5)
+
+    main_menu_gui.mainloop()
+
+
+def logout(prev_screen):
+    print("Logged out!")
+    prev_screen.destroy()
+
+def upload(user_data, prev_screen):
+    if prev_screen:
+        prev_screen.destroy()
+
+    upload_gui = tk.Tk()
+
+    width_of_window = 862
+    height_of_window = 519
+
+    screen_width = upload_gui.winfo_screenwidth()
+    screen_height = upload_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    upload_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                              x_coordinate, y_coordinate))
+    upload_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        upload_gui, bg=background, height=519, width=862,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(431, 0, 431 + 431, 0 + 519, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=100)
+
+    go_back_img = Image.open('go_back.png')
+    go_back_img = ImageTk.PhotoImage(go_back_img)
+    tk.Button(
+        image=go_back_img, borderwidth=0, highlightthickness=0,
+        command=lambda : main_menu(user_data, upload_gui), relief="flat").place(x=805, y=5)
+
+    create_patient_img = Image.open('create_patient.png')
+    create_patient_img = ImageTk.PhotoImage(create_patient_img)
+    tk.Button(
+        image=create_patient_img, borderwidth=0, highlightthickness=0,
+        command=lambda : create_patient(user_data, upload_gui), relief="flat").place(x=465, y=120)
+
+    create_appoint_img = Image.open('create_appointment.png')
+    create_appoint_img = ImageTk.PhotoImage(create_appoint_img)
+    tk.Button(
+        image=create_appoint_img, borderwidth=0, highlightthickness=0,
+        command=lambda : create_appointment(user_data, upload_gui), relief="flat").place(x=465, y=195)
+
+    create_encount_img = Image.open('create_encounter.png')
+    create_encount_img = ImageTk.PhotoImage(create_encount_img)
+    tk.Button(
+        image=create_encount_img, borderwidth=0, highlightthickness=0,
+        command=lambda : create_encounter(user_data, upload_gui), relief="flat").place(x=465, y=270)
+
+    upload_docs_img = Image.open('upload_docs.png')
+    upload_docs_img = ImageTk.PhotoImage(upload_docs_img)
+    tk.Button(
+        image=upload_docs_img, borderwidth=0, highlightthickness=0,
+        command=lambda : upload_documents(user_data, upload_gui), relief="flat").place(x=465, y=345)
+
+    upload_gui.mainloop()
+
+
+def create_patient(user_data, prev_screen):
+    if prev_screen:
+        prev_screen.destroy()
+
+    create_patient_gui = tk.Tk()
+
+    width_of_window = 862
+    height_of_window = 775
+
+    screen_width = create_patient_gui.winfo_screenwidth()
+    screen_height = create_patient_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    create_patient_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                                x_coordinate, y_coordinate))
+    create_patient_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        create_patient_gui, bg=background, height=775, width=862,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(200, 0, 200 + 662, 775, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo-small.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=280)
+
+    entry_box_small = Image.open('entry_box_small.png')
+    entry_box_small = ImageTk.PhotoImage(entry_box_small)
+    canvas.create_image(370, 100, image=entry_box_small)
+    canvas.create_image(370, 175, image=entry_box_small)
+    canvas.create_image(685, 100, image=entry_box_small)
+    canvas.create_image(685, 175, image=entry_box_small)
+    canvas.create_image(370, 250, image=entry_box_small)
+
+    canvas.create_image(370, 380, image=entry_box_small)
+    canvas.create_image(370, 455, image=entry_box_small)
+    canvas.create_image(685, 380, image=entry_box_small)
+    canvas.create_image(685, 455, image=entry_box_small)
+
+    canvas.create_image(370, 570, image=entry_box_small)
+    canvas.create_image(370, 645, image=entry_box_small)
+    canvas.create_image(685, 570, image=entry_box_small)
+
+    entry_box_smallest = Image.open('entry_box_smallest.png')
+    entry_box_smallest = ImageTk.PhotoImage(entry_box_smallest)
+    canvas.create_image(615, 250, image=entry_box_smallest)
+
+    canvas.create_text(
+        235, 40, text="Profile Information", fill=background,
+        font=('RedHatText', 20), anchor="w")
+    canvas.create_text(
+        240, 82, text="Full name", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 82, text="SSN #", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 157, text="Phone #", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 157, text="Date of Birth", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 232, text="MRN #", fill=background,
+        font=('RedHatText', 13), anchor="w")
+
+    canvas.create_text(
+        235, 320, text="Home Address Information", fill=background,
+        font=('RedHatText', 20), anchor="w")
+    canvas.create_text(
+        240, 362, text="Street", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 362, text="City", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 437, text="State", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 437, text="Zipcode", fill=background,
+        font=('RedHatText', 13), anchor="w")
+
+    canvas.create_text(
+        235, 515, text="Insurance Information", fill=background,
+        font=('RedHatText', 20), anchor="w")
+    canvas.create_text(
+        240, 552, text="Company Name", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 552, text="Policy #", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 627, text="Expiration Date", fill=background,
+        font=('RedHatText', 13), anchor="w")
+
+    global full_name_entry
+    full_name_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    full_name_entry.place(x=240, y=90, width=250, height=35)
+
+    global ssn_entry
+    ssn_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    ssn_entry.place(x=555, y=90, width=250, height=35)
+
+    global phone_entry
+    phone_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    phone_entry.place(x=240, y=165, width=250, height=35)
+
+    global dob_entry
+    dob_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    dob_entry.place(x=555, y=165, width=250, height=35)
+
+    global mrn_entry
+    mrn_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    mrn_entry.place(x=240, y=240, width=250, height=35)
+
+    global selection
+    selection = tk.StringVar()
+    options = ["Home", "Mobile", "Work"]
+    selection.set(options[1])
+    option_menu = tk.OptionMenu(
+        create_patient_gui, selection, *options)
+    option_menu.config(width=7)
+    option_menu.place(x=573, y=235)
+
+    global street_entry
+    street_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    street_entry.place(x=240, y=370, width=250, height=35)
+
+    global city_entry
+    city_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    city_entry.place(x=555, y=370, width=250, height=35)
+
+    global state_entry
+    state_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    state_entry.place(x=240, y=445, width=250, height=35)
+
+    global zipcode_entry
+    zipcode_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    zipcode_entry.place(x=555, y=445, width=250, height=35)
+    
+    global company_entry
+    company_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    company_entry.place(x=240, y=560, width=250, height=35)
+
+    global policy_entry
+    policy_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    policy_entry.place(x=555, y=560, width=250, height=35)
+
+    global exp_date_entry
+    exp_date_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    exp_date_entry.place(x=240, y=635, width=250, height=35)
+
+    go_back_img = Image.open('go_back.png')
+    go_back_img = ImageTk.PhotoImage(go_back_img)
+    tk.Button(
+        image=go_back_img, borderwidth=0, highlightthickness=0,
+        command=lambda : upload(user_data, create_patient_gui), relief="flat").place(x=805, y=5)
+
+    create_patient_img = Image.open('create_patient.png')
+    create_patient_img = ImageTk.PhotoImage(create_patient_img)
+    tk.Button(
+        image=create_patient_img, borderwidth=0, highlightthickness=0,
+        command=lambda : create_patient_api(user_data, create_patient_gui), relief="flat").place(x=350, y=700)
+
+    create_patient_gui.mainloop()
+
+def create_patient_api(user_data, prev_screen):
+    payload = json.dumps({
+    "data": {
+        "name": full_name_entry.get(),
+        "ssn": ssn_entry.get(),
+        "phone": phone_entry.get(),
+        "dob": dob_entry.get(),
+        "phone_type": selection.get(),
+        "mrn": mrn_entry.get(),
+        "address": {
+            "street": street_entry.get(),
+            "city": city_entry.get(),
+            "state": state_entry.get(),
+            "zipcode": zipcode_entry.get()
+        },
+        "insurance": {
+            "insurance_company": company_entry.get(),
+            "policy_number": policy_entry.get(),
+            "expiration_date": exp_date_entry.get()
+        }
+    },
+    "owners": [
+        user_data.uuid
+    ]
+    })
+
+    url = "https://dev.godzilla.burstiq.com/api/graphchain/patient"
+    headers = user_data.get_headers({"Content-Type": "application/json"})
+    response = requests.request("PUT", url, headers=headers, data=payload)
+    if error_handle(response) != 200:
+        tk.messagebox.showerror(
+            title="Create Error!", message="Please make sure all fields are entered correctly.")
+        return create_patient(user_data, prev_screen)
+
+    return upload(user_data, prev_screen)
+
+def select_file_path():
+    global output_path
+    output_path = tk.filedialog.askopenfilename()
+    path_entry.delete(0, tk.END)
+    path_entry.insert(0, output_path)
+
+
+def create_appointment(user_data, prev_screen):
+    if prev_screen:
+        prev_screen.destroy()
+
+    create_appt_gui = tk.Tk()
+
+    width_of_window = 862
+    height_of_window = 550
+
+    screen_width = create_appt_gui.winfo_screenwidth()
+    screen_height = create_appt_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    create_appt_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                                x_coordinate, y_coordinate))
+    create_appt_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        create_appt_gui, bg=background, height=575, width=862,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(200, 0, 200 + 662, 575, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo-small.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=200)
+
+    entry_box_small = Image.open('entry_box_small.png')
+    entry_box_small = ImageTk.PhotoImage(entry_box_small)
+    canvas.create_image(370, 100, image=entry_box_small)
+    canvas.create_image(370, 175, image=entry_box_small)
+    canvas.create_image(685, 100, image=entry_box_small)
+    canvas.create_image(685, 175, image=entry_box_small)
+    canvas.create_image(370, 250, image=entry_box_small)
+    canvas.create_image(370, 325, image=entry_box_small)
+
+    entry_box_smallest = Image.open('entry_box_smallest.png')
+    entry_box_smallest = ImageTk.PhotoImage(entry_box_smallest)
+    canvas.create_image(611, 250, image=entry_box_smallest)
+    canvas.create_image(759, 250, image=entry_box_smallest)
+
+    entry_box_large = Image.open('entry_box_large.png')
+    entry_box_large = ImageTk.PhotoImage(entry_box_large)
+    canvas.create_image(502, 400, image=entry_box_large)
+
+    canvas.create_text(
+        235, 40, text="Appointment Information", fill=background,
+        font=('RedHatText', 20), anchor="w")
+    canvas.create_text(
+        240, 82, text="*Appointment ID", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 82, text="*Date of Service", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 157, text="*Appointment Date", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        555, 157, text="*Appointment Purpose", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 232, text="*Provider Name", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 309, text="*MRN #", fill=background,
+        font=('RedHatText', 13), anchor="w")
+    canvas.create_text(
+        240, 384, text="Appointment Notes", fill=background,
+        font=('RedHatText', 13), anchor="w")
+
+    global appt_id_entry
+    appt_id_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    appt_id_entry.place(x=240, y=94, width=250, height=35)
+
+    global date_service_entry
+    date_service_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    date_service_entry.place(x=555, y=94, width=250, height=35)
+
+    global appt_date_entry
+    appt_date_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    appt_date_entry.place(x=240, y=169, width=250, height=35)
+
+    global appt_purpose_entry
+    appt_purpose_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    appt_purpose_entry.place(x=555, y=169, width=250, height=35)
+
+    global status_selection
+    status_selection = tk.StringVar()
+    options = ["Cancelled", "Completed", "Upcoming"]
+    status_selection.set(options[2])
+    option_menu = tk.OptionMenu(
+        create_appt_gui, status_selection, *options)
+    option_menu.config(width=9)
+    option_menu.place(x=710, y=235)
+
+    global type_selection
+    type_selection = tk.StringVar()
+    options = ["Inpatient", "Outpatient"]
+    type_selection.set(options[0])
+    option_menu = tk.OptionMenu(
+        create_appt_gui, type_selection, *options)
+    option_menu.config(width=9)
+    option_menu.place(x=562, y=235)
+
+    global provider_name_entry
+    provider_name_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    provider_name_entry.place(x=240, y=244, width=250, height=35)
+
+    global mrn_appt_entry
+    mrn_appt_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    mrn_appt_entry.place(x=240, y=319, width=250, height=35)
+
+    global path_entry
+    path_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    path_entry.place(x=240, y=394, width=385, height=35)
+
+    go_back_img = Image.open('go_back.png')
+    go_back_img = ImageTk.PhotoImage(go_back_img)
+    tk.Button(
+        image=go_back_img, borderwidth=0, highlightthickness=0,
+        command=lambda : upload(user_data, create_appt_gui), relief="flat").place(x=805, y=5)
+
+    path_picker_img = Image.open('entry_box_file_pick.png')
+    path_picker_img = ImageTk.PhotoImage(path_picker_img)
+    tk.Button(
+        image = path_picker_img, borderwidth = 0, highlightthickness = 0, relief = 'flat',
+        command = select_file_path).place(x=630, y=382)
+
+    create_appt_img = Image.open('create_appointment.png')
+    create_appt_img = ImageTk.PhotoImage(create_appt_img)
+    tk.Button(
+        image=create_appt_img, borderwidth=0, highlightthickness=0,
+        command=lambda : create_appt_api(user_data, create_appt_gui), relief="flat").place(x=350, y=460)
+
+    create_appt_gui.mainloop()
+
+
+def create_appt_api(user_data, prev_screen):
+    url = "https://dev.godzilla.burstiq.com/api/graphchain/appointment"
+    payload = json.dumps({
+    "data": {
+        "appointment_id": appt_id_entry.get(),
+        "dos": date_service_entry.get(),
+        "appointment_status": status_selection.get(),
+        "appointment_date": appt_date_entry.get(),
+        "appointment_purpose": appt_purpose_entry.get(),
+        "patient_type": type_selection.get(),
+        "provider_name": provider_name_entry.get(),
+        "mrn": mrn_appt_entry.get()
+    },
+    "owners": [
+        user_data.uuid
+    ]
+    })
+    headers = user_data.get_headers({'Content-Type': 'application/json'})
+    response = requests.request("PUT", url, headers=headers, data=payload)
+    if error_handle(response) != 200:
+        tk.messagebox.showerror(
+            title="Create Error!", message="Please make sure all fields are entered correctly.")
+        return create_appointment(user_data, prev_screen)
+
+    if path_entry.get():
+        if upload_docs_api(user_data) != 200:
+            tk.messagebox.showerror(
+                title="File Error!", message="Please make sure file is correct.")
+            return create_appointment(user_data, prev_screen)
+    
+    return upload(user_data, prev_screen)
+
+
+def upload_docs_api(user_data):
+    payload = ""
+    url = "https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM appointment AS I WHERE I.data.appointment_id == " + appt_id_entry.get() + " SELECT I"
+    response = requests.request("GET", url, headers=user_data.headers, data=payload)
+    error_handle(response)
+
+    data = json.loads(response.text)
+    appointment_id = data[0]['header']['id']
+
+    file_path = path_entry.get()
+    file_name = os.path.basename(file_path)
+    file_mime = magic.from_file(file_path, mime=True)
+
+    url = "https://dev.godzilla.burstiq.com/api/graphchain/appointment/" + appointment_id + "/appointment_notes/blobs"
+    payload={'name': file_name,
+        'metadata': '',
+        'BIQ_CUSTOMER_NAME': ''
+    }
+    files=[
+        ('file', (file_name, open(file_path, 'rb'), file_mime))
+    ]
+    response = requests.request("POST", url, headers=user_data.headers, data=payload, files=files)
+    return error_handle(response)
+        
+
+def create_encounter(user_data, prev_screen):
+    print("Create Encounter is not implemented!")
+
+
+def share(user_data, prev_screen):
+    if prev_screen:
+        prev_screen.destroy()
+
+    share_data_gui = tk.Tk()
+
+    width_of_window = 862
+    height_of_window = 610
+
+    screen_width = share_data_gui.winfo_screenwidth()
+    screen_height = share_data_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    share_data_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                                x_coordinate, y_coordinate))
+    share_data_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        share_data_gui, bg=background, height=610, width=862,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(200, 0, 200 + 662, 610, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo-small.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=200)
+
+    entry_box_small = Image.open('entry_box_small.png')
+    entry_box_small = ImageTk.PhotoImage(entry_box_small)
+    canvas.create_image(370, 100, image=entry_box_small)
+    canvas.create_image(370, 220, image=entry_box_small)
+
+    entry_box_multi = Image.open('entry_box_multiselect.png')
+    entry_box_multi = ImageTk.PhotoImage(entry_box_multi)
+    canvas.create_image(332, 410, image=entry_box_multi)
+
+    canvas.create_text(
+        235, 45, text="Select a user to share with:", fill=background,
+        font=('RedHatText', 15), anchor="w")
+
+    canvas.create_text(
+        235, 165, text="Select an appointment ID to share:", fill=background,
+        font=('RedHatText', 15), anchor="w")
+
+    canvas.create_text(
+        235, 285, text="Select attributes you would like to share:", fill=background,
+        font=('RedHatText', 15), anchor="w")
+
+    url = "https://dev.godzilla.burstiq.com/api/metadata/wallet"
+    payload = ""
+    response = requests.request("GET", url, headers=user_data.headers, data=payload)
+    all_users = json.loads(response.text)
+    options = []
+    for user in all_users:
+        options.append(user["email"])
+        
+    global user_selection
+    user_selection = tk.StringVar()
+    user_selection.set(options[0])
+    option_menu = tk.OptionMenu(
+        share_data_gui, user_selection, *options)
+    option_menu.config(width=30)
+    option_menu.place(x=258, y=85)
+
+    options = []
+    all_appts = json.loads(query(user_data, "appointment"))
+    for appt in all_appts:
+        if "appointment_id" in appt["data"].keys(): 
+            options.append(appt["data"]["appointment_id"])
+
+    global appt_selection
+    appt_selection = tk.StringVar()
+    appt_selection.set(options[0])
+    option_menu = tk.OptionMenu(
+        share_data_gui, appt_selection, *options)
+    option_menu.config(width=30)
+    option_menu.place(x=258, y=205)
+
+    global box
+    box = tk.Listbox(share_data_gui, selectmode=tk.EXTENDED, highlightthickness=0, 
+        font=('RedHatText', 12), height=8, width=17)
+    for key in all_appts[0]['data'].keys():
+        box.insert(tk.END, key)
+    box.insert(tk.END, "appointment_notes")
+    box.place(x=255, y=325)
+
+    go_back_img = Image.open('go_back.png')
+    go_back_img = ImageTk.PhotoImage(go_back_img)
+    tk.Button(
+        image=go_back_img, borderwidth=0, highlightthickness=0,
+        command=lambda : main_menu(user_data, share_data_gui), relief="flat").place(x=805, y=5)
+
+    share_img = Image.open('share.png')
+    share_img = ImageTk.PhotoImage(share_img)
+    tk.Button(
+        image=share_img, borderwidth=0, highlightthickness=0,
+        command=lambda : create_contract(user_data, share_data_gui), relief="flat").place(x=430, y=530)
+
+    share_data_gui.mainloop()
+
+def create_contract(user_data, prev_screen):
+
+    url = "https://dev.godzilla.burstiq.com/api/metadata/wallet/lookup?email=" + user_selection.get()
+    payload = ""
+    response = requests.request("GET", url, headers=user_data.headers, data=payload)
+    error_handle(response)
+    data = json.loads(response.text)
+    uuid = data['userID']
+
+    url = "https://dev.godzilla.burstiq.com/api/graphchain/appointment/consentcontracts"
+    only = []
+    for index in box.curselection():
+        only.append(f"{{chain}}.data.{box.get(first=index)}")
+    payload = json.dumps({
+        "to": [
+            uuid
+        ],
+        "when": f"{{chain}}.data.appointment_id == {appt_selection.get()}",
+        "only": only
+    })
+    
+    header = user_data.get_headers({'Content-Type': 'application/json'})
+    response = requests.request("POST", url, headers=header, data=payload)
+    if error_handle(response) != 200:
+        tk.messagebox.showerror(
+            title="Share Error!", message="Please make sure all fields are entered correctly.")
+        return share(user_data, prev_screen)
+    
+    return main_menu(user_data, prev_screen)
+
+
+# def view_appointments(user_data):
+
+#     url = "https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM appointment AS I SELECT I"
+#     payload = ""
+
+#     response = requests.request("GET", url, headers=user_data.headers, data=payload)
+#     error_handle(response)
+
+
+#     data = json.loads(response.text)
+#     for ele in data:
+#         print(ele['data'])
+
+#     choice = input("Would you like to download any documents\n1) Yes\n2) No\nChoice: ")
+#     if choice == '1': 
+#         appointment_id = input("Select an appointment ID to download from: ")
+
+#         url = f"https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM appointment AS i WHERE i.data.appointment_id == {appointment_id} SELECT i"
+#         payload = ""
+
+#         response = requests.request("GET", url, headers=user_data.headers, data=payload)
+#         error_handle(response)
+
+#         data = json.loads(response.text)
+#         sdoID = data[0]['header']['id']
+
+#         url = f"https://dev.godzilla.burstiq.com/api/graphchain/appointment/{sdoID}/blobs"
+#         payload = ""
+
+#         response = requests.request("GET", url, headers=user_data.headers, data=payload)
+#         error_handle(response)
+
+#         data = json.loads(response.text)
+#         hash = data[0]['blob']['hash']
+#         file_name = data[0]['blob']['name']
+
+#         url = f"https://dev.godzilla.burstiq.com/api/graphchain/appointment/{sdoID}/appointment_notes/{hash}/blobs"
+#         payload = ""
+
+#         response = requests.request("GET", url, headers=user_data.headers, data=payload)
+#         error_handle(response)
+
+#         #print(response.text)
+#         #data = json.loads(response.text)
+#         #bytes = base64.b64encode(response.text)
+
+#         with open(file_name, 'wb') as output:
+#             output.write(response.content)
+ 
+#     else:
+#         return
+    
+
+def view(user_data, prev_screen):
+    if prev_screen:
+        prev_screen.destroy()
+
+    view_gui = tk.Tk()
+
+    width_of_window = 1500
+    height_of_window = 800
+
+    screen_width = view_gui.winfo_screenwidth()
+    screen_height = view_gui.winfo_screenheight()
+
+    x_coordinate = (screen_width/2) - (width_of_window/2)
+    y_coordinate = (screen_height/2) - (height_of_window/2)
+
+    view_gui.geometry('%dx%d+%d+%d' % (width_of_window, height_of_window,
+                                                x_coordinate, y_coordinate))
+    view_gui.config(bg=background)
+
+    canvas = tk.Canvas(
+        view_gui, bg=background, height=800, width=1500,
+        bd=0, highlightthickness=0, relief="ridge")
+    canvas.place(x=0, y=0)
+    canvas.create_rectangle(200, 0, 200 + 1300, 1500, fill=text_color, outline="")
+
+    logo = Image.open('burstiq-logo-small.png')
+    logo = ImageTk.PhotoImage(logo)
+    tk.Label(image=logo, borderwidth=0).place(x=20, y=320)
+
+    entry_box_small = Image.open('entry_box_text.png')
+    entry_box_small = ImageTk.PhotoImage(entry_box_small)
+    canvas.create_image(540, 413, image=entry_box_small)
+    canvas.create_image(1165, 413, image=entry_box_small)
+
+    patient_text = scrolledtext.ScrolledText(view_gui, font=("RedHatText", 15))
+    data = query(user_data, "patient")
+    patient_text.insert(tk.END, format_query(data))
+    patient_text.config(width=50, height=27, state=tk.DISABLED)
+    patient_text.place(x=255,y=100)
+
+    appt_text = scrolledtext.ScrolledText(view_gui, font=("RedHatText", 15))
+    data = query(user_data, "appointment")
+    appt_text.insert(tk.END, format_query(data))
+    appt_text.config(width=50, height=27, state=tk.DISABLED)
+    appt_text.place(x=880,y=100)
+
+    go_back_img = Image.open('go_back.png')
+    go_back_img = ImageTk.PhotoImage(go_back_img)
+    tk.Button(
+        image=go_back_img, borderwidth=0, highlightthickness=0,
+        command=lambda : main_menu(user_data, view_gui), relief="flat").place(x=1445, y=5)
+            
+    canvas.create_text(
+        255, 45, text="Patient Info:", fill=background,
+        font=('RedHatText', 35), anchor="w")
+
+    canvas.create_text(
+        885, 45, text="Appointment Info:", fill=background,
+        font=('RedHatText', 35), anchor="w")
+
+    view_gui.mainloop()
+    
+
+def query(user_data, chain):
+    url = f"https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM {chain} AS i SELECT i"
+    payload = ""
+    response = requests.request("GET", url, headers=user_data.headers, data=payload)
+    error_handle(response)
+    return response.text
+
+
+def format_query(all_data):
+    removal_list = ["_key", "_id", "_rev", "id", "hash", "type", "operation", "signer", "signature", "dictionary"]
+    raw_output = json.loads(all_data)
+    for entry in raw_output:
+        for re in removal_list:
+            if "header" in entry.keys():
+                entry["header"].pop(re, None)
+            entry.pop(re, None)
+        
+    return json.dumps(raw_output, indent=4)
+            
+
+if __name__ == "__main__":
+    landing_page()
