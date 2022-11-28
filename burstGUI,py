@@ -79,8 +79,8 @@ def get_uuid(access_token, username):
 
 
 def login_button():
-    username = "dshpurik@mines.edu" #username_entry.get()
-    password = "BigFigEnergy24$$" #password_entry.get()
+    username = username_entry.get()
+    password = password_entry.get()
 
     if not username:
         tk.messagebox.showerror(
