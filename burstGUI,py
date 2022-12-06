@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import time
 import requests
 import json
@@ -85,8 +86,8 @@ def get_uuid(access_token, username, prev_screen):
 
 
 def login_button(prev_screen):
-    username = username_entry.get()
-    password = password_entry.get()
+    username = 'dshpurik@mines.edu' #username_entry.get()
+    password = 'BigFigEnergy24$$' #password_entry.get()
 
     if not username:
         tk.messagebox.showerror(
@@ -877,6 +878,8 @@ def create_contract(user_data, prev_screen):
     only = []
     for index in box.curselection():
         only.append(f"{{chain}}.data.{box.get(first=index)}")
+    only.append(f"{{chain}}.headers.timestamp")
+    only.append(f"{{chain}}.headers.owners")
     payload = json.dumps({
         "to": [
             uuid
@@ -936,13 +939,13 @@ def view(user_data, prev_screen):
 
     patient_text = scrolledtext.ScrolledText(view_gui, font=("RedHatText", 15))
     data = query(user_data, "patient")
-    patient_text.insert(tk.END, format_query(data))
+    patient_text.insert(tk.END, format_query(user_data, data))
     patient_text.config(width=50, height=27, state=tk.DISABLED)
     patient_text.place(x=255,y=100)
 
     appt_text = scrolledtext.ScrolledText(view_gui, font=("RedHatText", 15))
     data = query(user_data, "appointment")
-    appt_text.insert(tk.END, format_query(data))
+    appt_text.insert(tk.END, format_query(user_data, data))
     appt_text.config(width=50, height=27, state=tk.DISABLED)
     appt_text.place(x=880,y=100)
 
@@ -1023,10 +1026,28 @@ def query(user_data, chain):
     return response.text
 
 
-def format_query(all_data):
+def format_query(user_data, all_data):
     removal_list = ["_key", "_id", "_rev", "id", "hash", "type", "operation", "signer", "signature", "dictionary"]
     raw_output = json.loads(all_data)
+
+    url = "https://dev.godzilla.burstiq.com/api/metadata/wallet"
+    payload = ""
+    response = requests.request("GET", url, headers=user_data.headers, data=payload)
+    error_handle(response)
+
+    wallets = json.loads(response.text)
+
     for entry in raw_output:
+        if 'header' in entry.keys():
+            if 'timestamp' in entry['header'].keys():
+                date_time = datetime.strptime(entry['header']['timestamp'][:], '%Y-%m-%dT%H:%M:%S.%fZ')
+                date_time += timedelta(hours=5)
+                entry['header']["timestamp"] = f"{date_time.ctime()}"
+            if 'owners' in entry['header'].keys():
+                owner_id = entry['header']['owners'][0]
+                for wallet in wallets:
+                    if wallet['userID'] == owner_id:
+                        entry['header']['owners'] = wallet['email']
         for re in removal_list:
             if "header" in entry.keys():
                 entry["header"].pop(re, None)
