@@ -86,8 +86,8 @@ def get_uuid(access_token, username, prev_screen):
 
 
 def login_button(prev_screen):
-    username = 'dshpurik@mines.edu' #username_entry.get()
-    password = 'BigFigEnergy24$$' #password_entry.get()
+    username = username_entry.get()
+    password = password_entry.get()
 
     if not username:
         tk.messagebox.showerror(
@@ -639,6 +639,7 @@ def create_appointment(user_data, prev_screen):
 
     global date_service_entry
     date_service_entry = tk.Entry(bd=0, font=font, bg=secondary, fg=background,  highlightthickness=0)
+    date_service_entry.insert(0, datetime.today().strftime("%m/%d/%y"))
     date_service_entry.place(x=555, y=94, width=250, height=35)
 
     global appt_date_entry
@@ -878,8 +879,6 @@ def create_contract(user_data, prev_screen):
     only = []
     for index in box.curselection():
         only.append(f"{{chain}}.data.{box.get(first=index)}")
-    only.append(f"{{chain}}.headers.timestamp")
-    only.append(f"{{chain}}.headers.owners")
     payload = json.dumps({
         "to": [
             uuid
@@ -1017,6 +1016,10 @@ def download_file(user_data):
 
     with open(f"{dirname}/{file_name}", 'wb') as output:
         output.write(response.content)
+
+    tk.messagebox.showinfo(
+            title="Success!", message="File was successfully downloaded :)")
+    
 
 def query(user_data, chain):
     url = f"https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM {chain} AS i SELECT i"
