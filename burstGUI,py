@@ -954,7 +954,8 @@ def view(user_data, prev_screen):
     error_handle(response)
     appointements = json.loads(response.text)
     for appointment in appointements:
-        options.append(appointment['data']['appointment_id'])
+        if 'appointment_id' in appointment['data'].keys():
+            options.append(appointment['data']['appointment_id'])
     selection.set(options[0])
     option_menu = tk.OptionMenu(
         view_gui, selection, *options)
