@@ -11,12 +11,18 @@ from PIL import Image, ImageTk
 import tkinter.scrolledtext as scrolledtext
 
 
+# standard colors to use
 pink = '#E11584'
 background = '#47525A'
 text_color = '#CFD5D6'
 secondary = '#53AAA9'
 font = ('RedHatText', 17)
 
+"""
+    UserData:
+        Keeps track of any standard headers to be passed around in API calls
+
+"""
 class UserData:
 
     headers = {
@@ -34,6 +40,14 @@ class UserData:
 
 
 def error_handle(response):
+    """Console log any errors that occur in the application
+
+    Parameters
+    ----------
+    response
+        all details returned from the API call
+    """
+
     if response.status_code == 200:
         print("Successful operation!")
         return 200
@@ -49,6 +63,14 @@ def error_handle(response):
 
 
 def get_access_token(username, password, prev_screen):
+    """Grabs user's access token
+
+    Parameters
+    ----------
+    prev_screen
+        the previous screen object to delete if there is an error in login
+    """
+
     url = "https://keycloak.app.burstiq.com/auth/realms/burstiq/protocol/openid-connect/token"
     payload='client_id=jgodzilla-public&grant_type=password&username=' + username + '&password=' + password
     headers = {
@@ -67,6 +89,18 @@ def get_access_token(username, password, prev_screen):
 
 
 def get_uuid(access_token, username, prev_screen):
+    """Grabs user's UUID
+
+    Parameters
+    ----------
+    access_token
+        OAuth token for the user to access data in the blockchain
+    username
+        the current user who is logged in to grab their UUID
+    prev_screen
+        the previous screen object to delete if there is an error in login
+    """
+
     url = "https://dev.godzilla.burstiq.com/api/metadata/wallet/lookup?email=" + username
     payload = ""
     headers = {
@@ -86,6 +120,14 @@ def get_uuid(access_token, username, prev_screen):
 
 
 def login_button(prev_screen):
+    """Check if the user has typed in any information for login
+
+    Parameters
+    ----------
+    prev_screen
+        the previous screen object to delete if there is an error in login
+    """
+
     username = username_entry.get()
     password = password_entry.get()
 
@@ -102,6 +144,14 @@ def login_button(prev_screen):
 
 
 def landing_page(prev_screen):
+    """The login page for the user to enter the blockchain through
+
+    Parameters
+    ----------
+    prev_screen
+        the previous screen object if the user ever logs out
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -162,6 +212,18 @@ def landing_page(prev_screen):
 
 
 def login(username, password, prev_screen):
+    """Shows a loading screen while we validate login and grab UUID
+
+    Parameters
+    ----------
+    username
+        the username entered in the login page
+    password
+        the password entered in the login page
+    prev_screen
+        the previous screen object to delete when entering the application
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -224,6 +286,16 @@ def login(username, password, prev_screen):
 
 
 def main_menu(user_data, prev_screen):
+    """Shows all options the user can perform
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when entering the application
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -281,10 +353,30 @@ def main_menu(user_data, prev_screen):
 
 
 def logout(prev_screen):
+    """Redirect back to login page
+
+    Parameters
+    ----------
+    prev_screen
+        the previous screen object to delete when logging out
+    """
+
     print("Logged out!")
     return landing_page(prev_screen)
 
+
 def upload(user_data, prev_screen):
+    """Show options to create patient, appointment, encounter, or upload docs
+        Only creating a patient/apppointments works right now
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when entering this new view
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -348,6 +440,16 @@ def upload(user_data, prev_screen):
 
 
 def create_patient(user_data, prev_screen):
+    """Shows fields to create a patient 
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when entering this form
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -517,7 +619,18 @@ def create_patient(user_data, prev_screen):
 
     create_patient_gui.mainloop()
 
+
 def create_patient_api(user_data, prev_screen):
+    """Gather all inputed information into an API call
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when finished calling the API
+    """
+
     payload = json.dumps({
     "data": {
         "name": full_name_entry.get(),
@@ -553,7 +666,12 @@ def create_patient_api(user_data, prev_screen):
 
     return upload(user_data, prev_screen)
 
+
 def select_file_path():
+    """Display file explorer for user to select a file
+
+    """
+
     global output_path
     output_path = tk.filedialog.askopenfilename()
     path_entry.delete(0, tk.END)
@@ -561,6 +679,16 @@ def select_file_path():
 
 
 def create_appointment(user_data, prev_screen):
+    """Shows fields to create an appointment 
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when entering the form
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -702,6 +830,16 @@ def create_appointment(user_data, prev_screen):
 
 
 def create_appt_api(user_data, prev_screen):
+    """Gather all inputed information into an API call
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when finished calling the API
+    """
+
     url = "https://dev.godzilla.burstiq.com/api/graphchain/appointment"
     payload = json.dumps({
     "data": {
@@ -735,6 +873,14 @@ def create_appt_api(user_data, prev_screen):
 
 
 def upload_docs_api(user_data):
+    """Create a BLOB to attach the file too through API calls
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    """
+
     payload = ""
     url = "https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM appointment AS I WHERE I.data.appointment_id == " + appt_id_entry.get() + " SELECT I"
     response = requests.request("GET", url, headers=user_data.headers, data=payload)
@@ -763,7 +909,21 @@ def create_encounter(user_data, prev_screen):
     print("Create Encounter is not implemented!")
 
 
+def upload_documents(user_data, prev_screen):
+    print("Upload Documents is not implemented!")
+
+
 def share(user_data, prev_screen):
+    """Shows fields to create a consent contract
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when entering the form
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -862,11 +1022,20 @@ def share(user_data, prev_screen):
     share_img = ImageTk.PhotoImage(share_img)
     tk.Button(
         image=share_img, borderwidth=0, highlightthickness=0,
-        command=lambda : create_contract(user_data, share_data_gui), relief="flat").place(x=430, y=530)
+        command=lambda : create_contract_api(user_data, share_data_gui), relief="flat").place(x=430, y=530)
 
     share_data_gui.mainloop()
 
-def create_contract(user_data, prev_screen):
+def create_contract_api(user_data, prev_screen):
+    """Create a consent contract given inputted information
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when entering the API call
+    """
 
     url = "https://dev.godzilla.burstiq.com/api/metadata/wallet/lookup?email=" + user_selection.get()
     payload = ""
@@ -898,6 +1067,16 @@ def create_contract(user_data, prev_screen):
     
 
 def view(user_data, prev_screen):
+    """Shows text boxes to dispaly all data viewable by that user
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    prev_screen
+        the previous screen object to delete when the view window
+    """
+
     if prev_screen:
         prev_screen.destroy()
 
@@ -974,7 +1153,7 @@ def view(user_data, prev_screen):
     download = ImageTk.PhotoImage(download)
     tk.Button(
         image=download, borderwidth=0, highlightthickness=0,
-        command=lambda : download_file(user_data), relief="flat").place(x=1030, y=807)
+        command=lambda : download_file_api(user_data), relief="flat").place(x=1030, y=807)
             
     canvas.create_text(
         255, 45, text="Patient Info:", fill=background,
@@ -990,7 +1169,15 @@ def view(user_data, prev_screen):
 
     view_gui.mainloop()
 
-def download_file(user_data):
+def download_file_api(user_data):
+    """Grabs the BLOB for download
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    """
+
     url = f"https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM appointment AS i WHERE i.data.appointment_id == {selection.get()} SELECT i"
 
     response = requests.request("GET", url, headers=user_data.headers, data="")
@@ -1022,6 +1209,16 @@ def download_file(user_data):
     
 
 def query(user_data, chain):
+    """queries the viewable data
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    chain
+        the graph chain to look at it for data (either patient or appointment)
+    """
+
     url = f"https://dev.godzilla.burstiq.com/api/graphchain/query?query=FROM {chain} AS i SELECT i"
     payload = ""
     response = requests.request("GET", url, headers=user_data.headers, data=payload)
@@ -1030,6 +1227,16 @@ def query(user_data, chain):
 
 
 def format_query(user_data, all_data):
+    """Formats the queried data to look nicer
+
+    Parameters
+    ----------
+    user_data
+        object with all user info
+    all_data
+        the json data in raw form
+    """
+
     removal_list = ["_key", "_id", "_rev", "id", "hash", "type", "operation", "signer", "signature", "dictionary"]
     raw_output = json.loads(all_data)
 
